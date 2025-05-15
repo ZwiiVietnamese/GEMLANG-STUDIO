@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GemLang Playground</title>
+  <link rel="icon" href="https://emojiapi.dev/api/v1/gem/64.png" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0e0e1a;
+      color: white;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1f1f2e;
+      padding: 10px 20px;
+    }
+    header h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #00f0ff;
+      margin: 0;
+    }
+    nav a {
+      color: #ccc;
+      margin-left: 15px;
+      text-decoration: none;
+    }
+    nav a:hover {
+      color: #00f0ff;
+    }
+    .container {
+      padding: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      background: #1c1c2b;
+      color: #0ff;
+      font-family: monospace;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      outline: none;
+      resize: vertical;
+    }
+    button {
+      background: #00f0ff;
+      color: black;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 16px;
+      margin-top: 10px;
+      margin-right: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0ff;
+    }
+    .output {
+      background: #111;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>GemLang</h1>
+    <nav>
+      <a href="#" onclick="showPage('home')">Home</a>
+      <a href="#" onclick="showPage('learn')">Learn</a>
+      <a href="#" onclick="showPage('rules')">Rules</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- HOME -->
+    <div id="home" class="page">
+      <h2>Welcome to GemLang</h2>
+      <textarea id="code" placeholder="Write your GemLang code here..."></textarea>
+      <br>
+      <button onclick="runCode()">Run Code</button>
+      <button onclick="downloadProject()">Download Project</button>
+      <button onclick="openProject()">Open Project</button>
+      <input type="file" id="fileInput" accept=".gem" style="display: none" />
+      <div class="output" id="output">Output will appear here...</div>
+    </div>
+
+    <!-- LEARN -->
+    <div id="learn" class="page hidden">
+      <h2>Learn GemLang</h2>
+      <p>GemLang is a simple, English-like programming language inspired by Scratch. Example syntax:</p>
+      <pre>
+say "Hello!"
+repeat 3:
+  say "Looping"
+if true:
+  say "It worked!"
+      </pre>
+    </div>
+
+    <!-- RULES -->
+    <div id="rules" class="page hidden">
+      <h2>GemLang Rules</h2>
+      <ul>
+        <li>Indentation is important (like Python).</li>
+        <li>Use `:` for blocks (e.g., after `if`, `repeat`).</li>
+        <li>Quotes `"..."` are used for strings.</li>
+        <li>Built-in commands: say, repeat, if, set, wait...</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function runCode() {
+      const code = document.getElementById("code").value;
+      const lines = code.split("\n");
+      let output = "";
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith("say ")) {
+          output += line.slice(4).replace(/^"|"$/g, "") + "\n";
+        } else if (line.startsWith("repeat ")) {
+          const count = parseInt(line.match(/repeat (\d+):/)[1]);
+          let block = [];
+          i++;
+          while (i < lines.length && lines[i].startsWith("  ")) {
+            block.push(lines[i].slice(2));
+            i++;
+          }
+          i--;
+          for (let r = 0; r < count; r++) {
+            block.forEach(b => {
+              if (b.startsWith("say ")) output += b.slice(4).replace(/^"|"$/g, "") + "\n";
+            });
+          }
+        } else if (line.startsWith("if ")) {
+          const condition = line.match(/if (.+):/)[1];
+          if (condition === "true") {
+            i++;
+            while (i < lines.length && lines[i].startsWith("  ")) {
+              const inner = lines[i].trim();
+              if (inner.startsWith("say ")) output += inner.slice(4).replace(/^"|"$/g, "") + "\n";
+              i++;
+            }
+            i--;
+          }
+        }
+      }
+      document.getElementById("output").textContent = output || "[No output]";
+    }
+
+    function downloadProject() {
+      const content = document.getElementById("code").value;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "gemlang_project.gem";
+      a.click();
+    }
+
+    function openProject() {
+      document.getElementById("fileInput").click();
+    }
+
+    document.getElementById("fileInput").addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById("code").value = e.target.result;
+      };
+      reader.readAsText(file);
+    });
+
+    const editor = document.getElementById("code");
+    editor.addEventListener("keydown", (e) => {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const value = editor.value;
+
+      // Auto-indent after ":" + Enter
+      if (e.key === "Enter") {
+        const line = value.substring(0, start).split("\n").pop();
+        if (line.trim().endsWith(":")) {
+          e.preventDefault();
+          const indent = line.match(/^(\s*)/)[0] + "  ";
+          const before = value.substring(0, start);
+          const after = value.substring(end);
+          editor.value = before + "\n" + indent + after;
+          editor.selectionStart = editor.selectionEnd = start + 1 + indent.length;
+        }
+      }
+
+      // Auto-pair parentheses ()
+      if (e.key === "(") {
+        e.preventDefault();
+        const before = value.substring(0, start);
+        const after = value.substring(end);
+        editor.value = before + "()" + after;
+        editor.selectionStart = editor.selectionEnd = start + 1;
+      }
+
+      // Auto-pair double quotes ""
+      if (e.key === '"') {
+        e.preventDefault();
+        const before = value.substring(0, start);
+        const after = value.substring(end);
+        editor.value = before + '""' + after;
+        editor.selectionStart = editor.selectionEnd = start + 1;
+      }
+    });
+  </script>
+
+</body>
+</html>
