@@ -108,6 +108,11 @@ repeat 3:
   say "Looping"
 if true:
   say "It worked!"
+set name to "Gem"
+say name
+set a to 5
+set b to 3
+add a + b
       </pre>
     </div>
 
@@ -118,7 +123,7 @@ if true:
         <li>Indentation is important (like Python).</li>
         <li>Use `:` for blocks (e.g., after `if`, `repeat`).</li>
         <li>Quotes `"..."` are used for strings.</li>
-        <li>Built-in commands: say, repeat, if, set, wait...</li>
+        <li>Built-in commands: say, repeat, if, set, add...</li>
       </ul>
     </div>
   </div>
@@ -133,10 +138,12 @@ if true:
       const code = document.getElementById("code").value;
       const lines = code.split("\n");
       let output = "";
+      let vars = {};
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (line.startsWith("say ")) {
-          output += line.slice(4).replace(/^"|"$/g, "") + "\n";
+          const content = line.slice(4).trim();
+          output += resolve(content, vars) + "\n";
         } else if (line.startsWith("repeat ")) {
           const count = parseInt(line.match(/repeat (\d+):/)[1]);
           let block = [];
@@ -148,7 +155,7 @@ if true:
           i--;
           for (let r = 0; r < count; r++) {
             block.forEach(b => {
-              if (b.startsWith("say ")) output += b.slice(4).replace(/^"|"$/g, "") + "\n";
+              if (b.startsWith("say ")) output += resolve(b.slice(4), vars) + "\n";
             });
           }
         } else if (line.startsWith("if ")) {
@@ -157,14 +164,32 @@ if true:
             i++;
             while (i < lines.length && lines[i].startsWith("  ")) {
               const inner = lines[i].trim();
-              if (inner.startsWith("say ")) output += inner.slice(4).replace(/^"|"$/g, "") + "\n";
+              if (inner.startsWith("say ")) output += resolve(inner.slice(4), vars) + "\n";
               i++;
             }
             i--;
+          } else {
+            while (i + 1 < lines.length && lines[i + 1].startsWith("  ")) i++;
+          }
+        } else if (line.startsWith("set ")) {
+          const match = line.match(/set (\w+) to (.+)/);
+          if (match) vars[match[1]] = resolve(match[2], vars);
+        } else if (line.startsWith("add ")) {
+          const match = line.match(/add (\w+) \+ (\w+)/);
+          if (match) {
+            const a = parseFloat(vars[match[1]] || 0);
+            const b = parseFloat(vars[match[2]] || 0);
+            output += (a + b) + "\n";
           }
         }
       }
       document.getElementById("output").textContent = output || "[No output]";
+    }
+
+    function resolve(text, vars) {
+      text = text.trim();
+      if (text.startsWith('"') && text.endsWith('"')) return text.slice(1, -1);
+      return vars[text] !== undefined ? vars[text] : text;
     }
 
     function downloadProject() {
@@ -196,7 +221,6 @@ if true:
       const end = editor.selectionEnd;
       const value = editor.value;
 
-      // Auto-indent after ":" + Enter
       if (e.key === "Enter") {
         const line = value.substring(0, start).split("\n").pop();
         if (line.trim().endsWith(":")) {
@@ -209,7 +233,6 @@ if true:
         }
       }
 
-      // Auto-pair parentheses ()
       if (e.key === "(") {
         e.preventDefault();
         const before = value.substring(0, start);
@@ -218,7 +241,6 @@ if true:
         editor.selectionStart = editor.selectionEnd = start + 1;
       }
 
-      // Auto-pair double quotes ""
       if (e.key === '"') {
         e.preventDefault();
         const before = value.substring(0, start);
